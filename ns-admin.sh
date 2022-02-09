@@ -3,6 +3,10 @@
 read -p "Enter username : " username
 read -p "Enter namespace (must be created befor run this script) : " namespace
 
+csr=$( kubectl get csr | grep ${username} ) > /dev/null
+
+if [[ $csr == "" ]];then
+
 ################# create user kube-config file #####################
 group=$username
 openssl genrsa -out ${username}.key 2048
@@ -37,6 +41,7 @@ sudo -u $username kubectl config use-context $username
 
 rm $username.*
 
+fi
 ################# make user admin of a namespace#####################
 # bind cluser-admin role to user was created.Use namespace to limit
 # user to specific namespace that you want.
@@ -60,3 +65,4 @@ roleRef:
 EOF
 
 echo "$username is now admin of $namespace namespace"
+~                                                     
