@@ -1,13 +1,18 @@
 #!/bin/bash
 
+# before do this create user in your host
+
 read -p "Enter username : " username
 read -p "Enter namespace (must be created befor run this script) : " namespace
 
-csr=$( kubectl get csr | grep ${username} ) > /dev/null
+csr=$(kubectl get csr | grep ${username}) > /dev/null
 
-if [[ $csr == "" ]];then
+test -f /home/$username/.kube/config
+
+if [[ $? -ne 0 ]];then
 
 ################# create user kube-config file #####################
+echo $username
 group=$username
 openssl genrsa -out ${username}.key 2048
 openssl req -new -key ${username}.key -out ${username}.csr -subj "/CN=${username}/O=${group}"
@@ -32,16 +37,16 @@ kubectl get csr $username -o jsonpath='{.status.certificate}'| base64 -d > ${use
 chown $username: $username.*
 
 sudo -u $username kubectl config set-cluster cluster.local --server=https://127.0.0.1:6443 --certificate-authority /etc/kubernetes/pki/ca.crt --embed-certs
-
 sudo -u $username kubectl config set-credentials $username --client-key=${username}.key --client-certificate=${username}.crt --embed-certs=true
-
 sudo -u $username kubectl config set-context $username --cluster=cluster.local --user=$username
-
 sudo -u $username kubectl config use-context $username
 
 rm $username.*
 
+else
+  echo "/home/$username/.kube/config does exist"
 fi
+
 ################# make user admin of a namespace#####################
 # bind cluser-admin role to user was created.Use namespace to limit
 # user to specific namespace that you want.
@@ -50,7 +55,7 @@ cat <<EOF | kubectl apply -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: mycluster-$namespace-admin
+  name: mycluster-$namespace-admin-$username
   namespace: $namespace
 subjects:
 # You can specify more than one "subject"
@@ -65,4 +70,4 @@ roleRef:
 EOF
 
 echo "$username is now admin of $namespace namespace"
-~                                                     
+echo "run \"kubectl get -n $namespace pods\" as $username user to sure everything is Ok ! "
