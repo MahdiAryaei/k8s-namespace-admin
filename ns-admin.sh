@@ -11,6 +11,9 @@ test -f /home/$username/.kube/config
 
 if [[ $? -ne 0 ]];then
 
+# delete csr if exist
+kubectl delete csr $username
+
 ################# create user kube-config file #####################
 echo $username
 group=$username
